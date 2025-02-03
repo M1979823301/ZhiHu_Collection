@@ -9,6 +9,7 @@ import random
 from datetime import datetime
 import urllib
 from bs4 import BeautifulSoup
+import html
 
 
 # 保存到当前文件夹下的"./Zhihu"文件夹（这里是绝对路径！！！）
@@ -18,8 +19,7 @@ HEADERS = {
     "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
 }
 cookies = {
-    #收藏夹网页的cookies
-    #可以复制curl去https://curlconverter.com/转化为json
+    
 }
 if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
@@ -108,12 +108,19 @@ def convert_equation_to_mathjax(content):
         latex_code = urllib.parse.unquote(match.group(1).replace("+", "%20"))  # URL 解码
         latex_code = re.sub(r'<', r'\\lt ', latex_code)
         latex_code = re.sub(r'>', r'\\gt ', latex_code) 
-        latex_code = re.sub(r'\\bm\s+([a-zA-Z0-9\{\}]+)', r'\\boldsymbol{\1}', latex_code)
-        latex_code = re.sub(r'\\bm\s*{([a-zA-Z0-9]+)\}',r'\\boldsymbol{\1}', latex_code)
+        latex_code = re.sub(r'\\bm\s*([a-zA-Z0-9|(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega)\{\}]+)', r'\\boldsymbol{\1}', latex_code)
+        latex_code = re.sub(r'\\bm\s*{([a-zA-Z0-9|(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega)]+)\}',r'\\boldsymbol{\1}', latex_code)
+        latex_code = re.sub(r'\\newline',r'\\\\',latex_code)
         pattern = r'^\\\[.*\\\]$'
+        pattern2 = r'^\$\$.*\$\$$'
         a = bool(re.match(pattern, latex_code))
-        if(a == True):
+        aa = bool(re.match(pattern2,latex_code))
+        b = bool(re.match(r'\\\\', latex_code))
+        # print(b)
+        if(a == True or aa == True):
             return f'{latex_code}'
+        elif(b==True):
+            return f'\\[{latex_code}\\]'
         else:
             return f'\\({latex_code}\\)'
 
@@ -264,10 +271,6 @@ def generate_zhihu_html(json_data, output_file='zhihu_output.html'):
     <title>知乎内容聚合</title>
     
     <script src="https://polyfill.alicdn.com/v3/polyfill.min.js?features=es6"></script>
-    <!-- KaTeX CDN -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/contrib/auto-render.min.js"></script>
     
     <style>
         :root {{
@@ -364,16 +367,12 @@ def generate_zhihu_html(json_data, output_file='zhihu_output.html'):
             margin-top: 0;
             max-width: 100%;
         }}    
-        mjx-container[display="true"] {{
-            text-align: left !important; /* 左对齐 */
-            display: block;
-        }}
         pre {{
             background: #f5f5f5;
             color: #2d2d2d;
             padding: 12px;
             border-radius: 6px;
-            font-family: 'Fira Code', 'Source Code Pro', 'Roboto Mono', monospace;
+            font-family: Consolas;
             font-size: 16px;
             font-weight: 1000;
             overflow-x: auto;
@@ -385,13 +384,14 @@ def generate_zhihu_html(json_data, output_file='zhihu_output.html'):
             overflow-wrap: normal;
         }}
 
-        pre.code {{
+        pre code {{
             white-space: pre;
             overflow-x: auto;
             background: #f5f5f5;
             word-wrap: break-word; 
+            font-family: Consolas;
+            font-weight: 500;
             word-break: break-word;
-            font-family: 'Fira Code', 'Source Code Pro', 'Roboto Mono', monospace;
         }}
 
         code:not(pre code) {{
@@ -399,7 +399,7 @@ def generate_zhihu_html(json_data, output_file='zhihu_output.html'):
             background: #f5f5f5;
             word-wrap: break-word; 
             word-break: break-word;
-            font-family: 'Fira Code', 'Source Code Pro', 'Roboto Mono', monospace;
+            font-family: Consolas;
         }}
 
         .token.keyword {{
@@ -477,24 +477,58 @@ def generate_zhihu_html(json_data, output_file='zhihu_output.html'):
 
     {content_body}
 
-    <script>
-        // KaTeX configuration
-        window.MathJax = {{
-            loader: {{load: ['input/tex', 'output/svg']}},
-            options: {{
-                enableMenu: false
-            }},
-            tex: {{
-                packages: {{'[+]': ['physics']}},
-            }}
-        }};
-    </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script type="text/javascript" async
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"
+  onload="MathJaxLoaded()">
+</script>
+
+<script type="text/javascript">
+  function MathJaxLoaded() {{
+    MathJax.Hub.Config({{
+      tex2jax: {{
+        inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+        displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
+        processEscapes: true,
+        processEnvironments: true,
+      }},
+      TeX: {{
+        extensions: ["AMSmath.js", "AMSsymbols.js"],
+        equationNumbers: {{ autoNumber: "AMS" }}
+      }},
+      "HTML-CSS": {{ availableFonts: ["TeX"] }},
+      SVG: {{ fontCache: "global" }},
+      MathML: {{ extensions: ["mml3.js"] }},
+      AsciiMath: {{ extensions: ["asciimath2jax.js"] }},
+      menuSettings: {{ zoom: "Double-Click" }},
+      showProcessingMessages: true,
+      messageStyle: "normal",
+      extensions: ["tex2jax.js"], 
+    }});
+    MathJax.Hub.Register.MessageHook("TeX Jax - parse error", function (message) {{
+      console.error("MathJax 解析错误:", message);
+    }});
+
+    MathJax.Hub.Register.MessageHook("Math Processing Error", function (message) {{
+      console.error("MathJax 处理错误:", message);
+    }});
+
+    // 捕获所有 MathJax 的警告信息
+    MathJax.Hub.Register.MessageHook("MathJax Error", function (message) {{
+      console.warn("MathJax 错误:", message);
+    }});
+  }}
+</script>
+
+
+
+<script type="text/javascript" async 
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.24.1/prism.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {{
             Prism.highlightAll();
-        }}),
+        }});
     </script>
 
 </body>
@@ -588,14 +622,13 @@ def generate_zhihu_html(json_data, output_file='zhihu_output.html'):
 
 
 # 收藏夹的编号
-collections=str(1)
-# 从第几页文章开始
-start=2
-start*=20
-# 第几页文章结束              
-end=4
-end*=20
-name_=str("mama")
+collections=str()
+# 从第几篇文章开始
+start=1
+# 第几篇文章结束              
+end=1500
+# 存放html的文件夹名称
+save_folder = ".\\folder\\"
 
 # 时间获取（似乎不是太重要？）
 now_time = int(time.time())
@@ -611,10 +644,11 @@ for x in range(int(start)+1,int(end)+1):
         "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
     }
     res=requests.get(url=url,headers=headers,cookies=cookies).text
+    # res=bytes(res,"utf-8").decode("unicode_escape")
+
     with open("data.json","w",encoding="utf-8") as f:
         f.write(res)
     # print(res)  
-    save_folder = ".\\folder\\"
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     parse = json.loads(res)
