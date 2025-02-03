@@ -1,2 +1,2 @@
-# ZhiHu_Collection
-知乎收藏加本地爬取存储（初始版）
+# ZhiHu_Collection爬取存储
+知乎收藏夹本地爬取存储（初始版）
